@@ -1,0 +1,1163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KarsaFest Ticketing - Anonymous Merkle Tree Verification</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tailwind Configuration for Custom Theme -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        display: ['"Space Grotesk"', 'sans-serif'],
+                    },
+                    colors: {
+                        fest: {
+                            pink: '#ff007f',
+                            purple: '#7928ca',
+                            cyan: '#00dfd8',
+                            dark: '#05050c',
+                            card: '#0d0e1b',
+                        }
+                    },
+                    boxShadow: {
+                        'neon-pink': '0 0 20px rgba(255, 0, 127, 0.4)',
+                        'neon-cyan': '0 0 20px rgba(0, 223, 216, 0.4)',
+                        'neon-purple': '0 0 25px rgba(121, 40, 202, 0.3)',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Modern Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #05050c;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e1b4b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #312e81;
+        }
+        .glow-text-pink {
+            text-shadow: 0 0 10px rgba(255, 0, 127, 0.5);
+        }
+        .glow-text-cyan {
+            text-shadow: 0 0 10px rgba(0, 223, 216, 0.5);
+        }
+        .glassmorphism {
+            background: rgba(13, 14, 27, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .neon-border-pink {
+            border: 1px solid rgba(255, 0, 127, 0.3);
+        }
+        .neon-border-cyan {
+            border: 1px solid rgba(0, 223, 216, 0.3);
+        }
+    </style>
+</head>
+<body class="bg-fest-dark text-slate-100 font-sans min-h-screen overflow-x-hidden relative">
+
+    <!-- Glowing Decorative Background Orbs -->
+    <div class="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-fest-purple rounded-full mix-blend-screen filter blur-[120px] opacity-20 pointer-events-none"></div>
+    <div class="absolute bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] bg-fest-pink rounded-full mix-blend-screen filter blur-[120px] opacity-15 pointer-events-none"></div>
+    <div class="absolute top-[30%] left-[40%] w-[35vw] h-[35vw] bg-fest-cyan rounded-full mix-blend-screen filter blur-[150px] opacity-10 pointer-events-none"></div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-3 max-w-md w-full px-4"></div>
+
+    <!-- Guide Modal Overlay -->
+    <div id="guide-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/70 backdrop-blur-md px-4 py-6">
+        <div class="glassmorphism max-w-2xl w-full p-6 md:p-8 rounded-3xl border border-fest-pink/30 hover:border-fest-cyan/40 shadow-neon-purple max-h-[90vh] overflow-y-auto space-y-6 relative scale-95 opacity-0 transition-all duration-300" id="guide-modal-content">
+            <!-- Close Button -->
+            <button onclick="toggleGuideModal(false)" class="absolute top-4 right-4 p-2 rounded-full bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-all">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+
+            <!-- Modal Header -->
+            <div class="flex items-center gap-3 border-b border-white/5 pb-4">
+                <div class="w-10 h-10 rounded-xl bg-fest-pink/20 flex items-center justify-center text-fest-pink shadow-neon-pink">
+                    <i data-lucide="book-open" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h2 class="font-display font-extrabold text-xl md:text-2xl text-white">Panduan Penggunaan KarsaFest</h2>
+                    <p class="text-xs text-slate-400">Cara menguji tiketing berbasis Merkle Tree secara offline & online</p>
+                </div>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="space-y-6 text-sm text-slate-300 leading-relaxed font-light">
+                <!-- Concept Brief -->
+                <div class="p-4 rounded-xl bg-white/5 border border-white/5">
+                    <h3 class="font-bold text-white text-sm mb-1 flex items-center gap-2">
+                        <i data-lucide="info" class="w-4 h-4 text-fest-cyan"></i> Konsep Dasar
+                    </h3>
+                    <p class="text-xs text-slate-400">
+                        Tiket Anda divalidasi menggunakan <strong>Merkle Tree</strong>. Panitia hanya menyimpan 1 nilai ringkasan data (<strong>Merkle Root</strong>) di blockchain, dan tiket Anda diverifikasi menggunakan data pembuktian jalur (<strong>Merkle Proof</strong>) tanpa pernah menunjukkan rahasia tiket Anda ke panitia.
+                    </p>
+                </div>
+
+                <!-- Simulation Mode -->
+                <div class="space-y-2">
+                    <h3 class="font-bold text-fest-pink flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-full bg-fest-pink/20 text-fest-pink flex items-center justify-center text-xs font-bold font-display">1</span>
+                        Metode A: Uji Coba Offline (Simulasi Lokal)
+                    </h3>
+                    <p class="text-xs text-slate-400 pl-8 font-semibold">Metode ini gratis, instan, dan tidak memerlukan wallet atau token asli.</p>
+                    <ol class="list-decimal list-inside pl-8 space-y-1.5 text-xs text-slate-300">
+                        <li>Lihat kolom kiri <strong>"Daftar Tiket Aktif"</strong> (sudah ada 3 tiket bawaan).</li>
+                        <li>Klik tombol <strong>"Hitung Merkle Root & Tree"</strong> di bagian bawah kolom kiri.</li>
+                        <li>Klik salah satu tiket dalam daftar (misal tiket VIP pertama) untuk memunculkan detail kodenya.</li>
+                        <li>Klik **"Masukkan ke Input Gate Check-in"** untuk menyalin bukti ke gerbang kanan.</li>
+                        <li>Klik **"Verifikasi Lokal (Simulasi)"** di kolom kanan. Gerbang akan menyala hijau <strong>ACCESS GRANTED (VALID)</strong>!</li>
+                    </ol>
+                </div>
+
+                <!-- On-chain Mode -->
+                <div class="space-y-2">
+                    <h3 class="font-bold text-fest-cyan flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-full bg-fest-cyan/20 text-fest-cyan flex items-center justify-center text-xs font-bold font-display">2</span>
+                        Metode B: Uji Coba On-Chain (Blockchain & MetaMask)
+                    </h3>
+                    <p class="text-xs text-slate-400 pl-8 font-semibold">Metode ini menguji interaksi langsung dengan smart contract asli.</p>
+                    <ol class="list-decimal list-inside pl-8 space-y-1.5 text-xs text-slate-300">
+                        <li>Hubungkan dompet digital Anda menggunakan tombol **"Connect Wallet"** di Navbar kanan atas.</li>
+                        <li>Deploy file <code>KarsaTix.sol</code> di Remix IDE dan salin alamatnya. Tempelkan ke panel admin di bawah (Panitia Console) lalu simpan.</li>
+                        <li>Tambahkan tiket baru atau gunakan yang ada, klik **"Hitung Merkle Root & Tree"** di kolom kiri, lalu salin kode root (`0x...`) yang tampil.</li>
+                        <li>Di **Panitia Console**, masukkan root baru tersebut ke kolom **"Update Root On-Chain"** lalu klik **"Update Root"**. Setujui transaksi MetaMask.</li>
+                        <li>Masukkan data tiket terpilih ke Gate, lalu klik **"Verifikasi Smart Contract"**. Hasilnya akan divalidasi langsung dari blockchain secara gasless (gratis)!</li>
+                    </ol>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="flex justify-end pt-4 border-t border-white/5">
+                <button onclick="toggleGuideModal(false)" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-fest-pink to-fest-purple hover:brightness-110 text-white text-xs font-bold transition-all shadow-md active:scale-95">
+                    Saya Mengerti, Mulai Tes!
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navbar -->
+    <nav class="sticky top-0 z-40 w-full glassmorphism border-b border-white/5 py-4 px-6 md:px-12 flex justify-between items-center">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-gradient-to-tr from-fest-pink to-fest-cyan flex items-center justify-center shadow-neon-pink">
+                <i data-lucide="party-popper" class="w-6 h-6 text-white"></i>
+            </div>
+            <div>
+                <span class="font-display font-extrabold text-2xl tracking-wider bg-gradient-to-r from-fest-pink via-purple-400 to-fest-cyan bg-clip-text text-transparent">KARSAFEST</span>
+                <span class="text-[9px] block tracking-widest text-slate-400 font-semibold uppercase">TICKETING GATEWAY</span>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-4">
+            <!-- Guide Button -->
+            <button onclick="toggleGuideModal(true)" class="flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-slate-500 transition-all duration-300 font-semibold text-xs text-slate-300 active:scale-95">
+                <i data-lucide="help-circle" class="w-4 h-4 text-fest-pink"></i>
+                <span>Panduan DApp</span>
+            </button>
+            
+            <!-- Wallet Connect Button -->
+            <button id="btn-connect" onclick="connectWallet()" class="flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-fest-purple to-indigo-900 border border-purple-500/30 hover:border-fest-pink/80 transition-all duration-300 font-medium text-sm shadow-lg hover:shadow-neon-purple active:scale-95 group">
+                <i data-lucide="wallet" class="w-4 h-4 text-fest-cyan group-hover:animate-bounce"></i>
+                <span id="btn-connect-text">Connect Wallet</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Content Container -->
+    <main class="max-w-7xl mx-auto px-4 md:px-8 py-10 relative z-10">
+        
+        <!-- Hero Section -->
+        <header class="text-center mb-16 relative">
+            <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs text-fest-cyan font-medium mb-6 backdrop-blur-sm">
+                <i data-lucide="sparkles" class="w-3.5 h-3.5 animate-pulse"></i>
+                Zero-Knowledge Proof & Merkle Tree Concepts
+            </div>
+            <h1 class="font-display font-extrabold text-4xl md:text-6xl tracking-tight leading-none mb-6">
+                Pentas Seni <span class="bg-gradient-to-r from-fest-pink via-fuchsia-500 to-fest-cyan bg-clip-text text-transparent">KarsaFest</span>
+            </h1>
+            <p class="text-slate-400 text-lg max-w-2xl mx-auto font-light leading-relaxed">
+                Verifikasi tiket masuk festival secara anonim menggunakan konsep kriptografi <span class="text-fest-pink font-semibold">Merkle Tree</span>.
+                Buktikan kepemilikan tiket tanpa membuka identitas asli atau kode rahasia Anda.
+            </p>
+        </header>
+
+        <!-- Main Workspace Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+            
+            <!-- COLUMN 1: Beli Tiket (Generate Secret) -->
+            <section class="glassmorphism p-6 md:p-8 rounded-3xl neon-border-pink hover:shadow-neon-purple transition-all duration-500">
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-fest-pink/20 flex items-center justify-center text-fest-pink">
+                            <i data-lucide="ticket-plus" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <h2 class="font-display font-bold text-xl md:text-2xl text-white">1. Generate Tiket</h2>
+                            <p class="text-xs text-slate-400">Buat data tiket & bangun Merkle Tree</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-6">
+                    <!-- Ticket Generator Controls -->
+                    <div class="p-4 rounded-2xl bg-white/5 border border-white/5">
+                        <label class="block text-xs text-slate-400 font-semibold uppercase tracking-wider mb-2">Pilih Kategori Tiket</label>
+                        <div class="grid grid-cols-3 gap-3 mb-4">
+                            <button onclick="setCategory('VIP')" id="cat-VIP" class="category-btn py-2 px-3 rounded-xl border border-fest-pink bg-fest-pink/10 text-fest-pink text-sm font-semibold transition-all">VIP</button>
+                            <button onclick="setCategory('REG')" id="cat-REG" class="category-btn py-2 px-3 rounded-xl border border-white/10 hover:border-slate-500 text-slate-300 text-sm font-semibold transition-all">Regular</button>
+                            <button onclick="setCategory('GEN')" id="cat-GEN" class="category-btn py-2 px-3 rounded-xl border border-white/10 hover:border-slate-500 text-slate-300 text-sm font-semibold transition-all">General</button>
+                        </div>
+
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <input type="text" id="input-ticket-owner" placeholder="Nama Samaran (e.g. Anonimizer)" class="flex-1 px-4 py-2.5 rounded-xl bg-fest-dark border border-white/10 text-white text-sm placeholder-slate-500 focus:outline-none focus:border-fest-pink transition-all">
+                            <button onclick="generateNewTicket()" class="px-5 py-2.5 rounded-xl bg-fest-pink text-white text-sm font-bold shadow-lg shadow-fest-pink/20 hover:bg-fest-pink/80 transition-all flex items-center justify-center gap-2 active:scale-95">
+                                <i data-lucide="plus-circle" class="w-4 h-4"></i> Generate Tiket
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Ticket List -->
+                    <div>
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="text-sm font-bold text-slate-300 flex items-center gap-2">
+                                <i data-lucide="list-collapse" class="w-4 h-4 text-fest-pink"></i> Daftar Tiket Aktif (<span id="ticket-count">3</span>)
+                            </h3>
+                            <button onclick="resetTickets()" class="text-xs text-slate-500 hover:text-fest-pink transition-all flex items-center gap-1">
+                                <i data-lucide="rotate-ccw" class="w-3 h-3"></i> Reset
+                            </button>
+                        </div>
+                        
+                        <div id="ticket-list" class="space-y-2 max-h-[200px] overflow-y-auto pr-1">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Build Tree Action -->
+                    <div class="pt-4 border-t border-white/5 space-y-4">
+                        <button onclick="buildMerkleTree()" class="w-full py-3 rounded-xl bg-gradient-to-r from-fest-pink to-fest-purple hover:from-fest-pink hover:to-fest-purple/80 text-white font-bold text-sm tracking-wide transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2">
+                            <i data-lucide="git-merge" class="w-4.5 h-4.5"></i> Hitung Merkle Root & Tree
+                        </button>
+
+                        <div id="root-display" class="hidden p-4 rounded-2xl bg-indigo-950/30 border border-indigo-500/20 text-slate-300">
+                            <span class="block text-[10px] text-indigo-400 font-bold uppercase tracking-widest mb-1">Generated Merkle Root</span>
+                            <div class="flex items-center justify-between gap-2">
+                                <code id="merkle-root-value" class="text-xs font-mono break-all text-white select-all">0x0000000000000000000000000000000000000000000000000000000000000000</code>
+                                <button onclick="copyText('merkle-root-value')" class="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-all" title="Copy Root">
+                                    <i data-lucide="copy" class="w-4 h-4 text-slate-400"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Selected Ticket Details -->
+                    <div id="details-section" class="hidden p-4 rounded-2xl bg-slate-900/50 border border-white/5 space-y-3">
+                        <div class="flex justify-between items-center">
+                            <h4 class="text-xs font-bold text-fest-cyan uppercase tracking-wider">Tiket Terpilih untuk Check-in</h4>
+                            <span id="details-badge" class="px-2 py-0.5 text-[10px] font-bold rounded bg-fest-pink/20 text-fest-pink">VIP</span>
+                        </div>
+                        <div class="space-y-2 font-mono text-xs">
+                            <div>
+                                <span class="text-slate-500 block text-[10px] uppercase font-sans">Secret Code (Keep Private)</span>
+                                <div class="flex justify-between items-center bg-black/30 p-2 rounded-lg mt-1 border border-white/5">
+                                    <span id="details-secret" class="text-white select-all font-semibold">KARSA-FEST-XXXX</span>
+                                    <button onclick="copyText('details-secret')" class="p-1 rounded bg-white/5 text-slate-400 hover:text-white transition-all"><i data-lucide="copy" class="w-3.5 h-3.5"></i></button>
+                                </div>
+                            </div>
+                            <div>
+                                <span class="text-slate-500 block text-[10px] uppercase font-sans">Leaf Hash (Kirim ke Gate)</span>
+                                <div class="flex justify-between items-center bg-black/30 p-2 rounded-lg mt-1 border border-white/5">
+                                    <span id="details-leaf" class="text-slate-300 break-all select-all">0x...</span>
+                                    <button onclick="copyText('details-leaf')" class="p-1 rounded bg-white/5 text-slate-400 hover:text-white transition-all"><i data-lucide="copy" class="w-3.5 h-3.5"></i></button>
+                                </div>
+                            </div>
+                            <div>
+                                <span class="text-slate-500 block text-[10px] uppercase font-sans">Merkle Proof (Kirim ke Gate)</span>
+                                <div class="flex justify-between items-center bg-black/30 p-2 rounded-lg mt-1 border border-white/5">
+                                    <span id="details-proof" class="text-slate-300 break-all select-all">[]</span>
+                                    <button onclick="copyText('details-proof')" class="p-1 rounded bg-white/5 text-slate-400 hover:text-white transition-all"><i data-lucide="copy" class="w-3.5 h-3.5"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                        <button onclick="sendToGateInput()" class="w-full py-2 bg-fest-cyan/10 hover:bg-fest-cyan/20 border border-fest-cyan/30 hover:border-fest-cyan text-fest-cyan font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 mt-2">
+                            <i data-lucide="arrow-right-left" class="w-3.5 h-3.5"></i> Masukkan ke Input Gate Check-in
+                        </button>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- COLUMN 2: Gate Check-in (Verify Proof) -->
+            <section class="glassmorphism p-6 md:p-8 rounded-3xl neon-border-cyan hover:shadow-neon-cyan transition-all duration-500 flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-fest-cyan/20 flex items-center justify-center text-fest-cyan">
+                                <i data-lucide="scan-face" class="w-5 h-5"></i>
+                            </div>
+                            <div>
+                                <h2 class="font-display font-bold text-xl md:text-2xl text-white">2. Gate Check-in</h2>
+                                <p class="text-xs text-slate-400">Verifikasi tiket secara anonim (On-Chain/Off-Chain)</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Input Fields -->
+                    <div class="space-y-4 mb-6">
+                        <div>
+                            <label class="block text-xs text-slate-400 font-semibold uppercase tracking-wider mb-2">Leaf Hash (bytes32)</label>
+                            <input type="text" id="gate-leaf" placeholder="0x..." class="w-full px-4 py-2.5 rounded-xl bg-fest-dark border border-white/10 text-white font-mono text-sm placeholder-slate-500 focus:outline-none focus:border-fest-cyan transition-all">
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between items-center mb-2">
+                                <label class="block text-xs text-slate-400 font-semibold uppercase tracking-wider">Merkle Proof (bytes32 array)</label>
+                                <span class="text-[10px] text-slate-500 font-mono">Format: ["0x...", "0x..."]</span>
+                            </div>
+                            <textarea id="gate-proof" rows="3" placeholder='["0xabc...", "0xdef..."]' class="w-full px-4 py-2.5 rounded-xl bg-fest-dark border border-white/10 text-white font-mono text-sm placeholder-slate-500 focus:outline-none focus:border-fest-cyan transition-all resize-none"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+                        <button onclick="verifyLocally()" class="py-3 px-4 rounded-xl bg-white/5 border border-white/10 hover:border-slate-400 hover:bg-white/10 font-bold text-sm text-slate-200 transition-all flex items-center justify-center gap-2 active:scale-95">
+                            <i data-lucide="cpu" class="w-4 h-4"></i> Verifikasi Lokal (Simulasi)
+                        </button>
+                        <button onclick="verifyOnChain()" class="py-3 px-4 rounded-xl bg-fest-cyan hover:bg-cyan-400 text-fest-dark font-extrabold text-sm transition-all shadow-lg shadow-fest-cyan/20 flex items-center justify-center gap-2 active:scale-95">
+                            <i data-lucide="shield-check" class="w-4 h-4"></i> Verifikasi Smart Contract
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Gate Visual State Indicator -->
+                <div id="gate-indicator" class="p-6 rounded-2xl border bg-slate-900/40 border-slate-800 text-center transition-all duration-500 flex flex-col items-center justify-center gap-3">
+                    <div id="gate-icon-container" class="w-14 h-14 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 border border-slate-700 animate-pulse">
+                        <i data-lucide="shield-question" class="w-8 h-8"></i>
+                    </div>
+                    <div>
+                        <h3 id="gate-status-title" class="font-display font-bold text-lg text-slate-300">Menunggu Input Tiket</h3>
+                        <p id="gate-status-desc" class="text-xs text-slate-500">Masukkan leaf hash dan proof yang valid untuk memverifikasi.</p>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+
+        <!-- Section 3: Owner/Admin Panel (Collapsible) -->
+        <section class="glassmorphism rounded-3xl overflow-hidden border border-white/5 shadow-xl transition-all duration-300">
+            <button onclick="toggleAdminPanel()" class="w-full px-6 py-5 flex items-center justify-between bg-white/[0.02] hover:bg-white/[0.05] transition-all">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400">
+                        <i data-lucide="sliders" class="w-4.5 h-4.5"></i>
+                    </div>
+                    <div class="text-left">
+                        <h3 class="font-display font-bold text-base text-white">Panitia Console (Admin Panel)</h3>
+                        <p class="text-[11px] text-slate-400">Hubungkan kontrak dan atur Merkle Root di blockchain</p>
+                    </div>
+                </div>
+                <i id="admin-chevron" data-lucide="chevron-down" class="w-5 h-5 text-slate-400 transition-all duration-300"></i>
+            </button>
+
+            <div id="admin-panel" class="hidden px-6 pb-6 pt-2 border-t border-white/5 space-y-6">
+                <!-- Contract Settings Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs text-slate-400 font-semibold uppercase tracking-wider mb-2">Smart Contract Address</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="input-contract-address" placeholder="0x..." class="flex-1 px-4 py-2 rounded-xl bg-fest-dark border border-white/10 text-white font-mono text-sm focus:outline-none focus:border-indigo-500 transition-all">
+                            <button onclick="saveContractAddress()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all">Simpan</button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 font-semibold uppercase tracking-wider mb-2">Current On-Chain Merkle Root</label>
+                        <div class="flex gap-2">
+                            <div class="flex-1 px-4 py-2 rounded-xl bg-fest-dark/50 border border-white/5 text-slate-400 font-mono text-xs truncate flex items-center" id="onchain-root-display">
+                                Tidak Terhubung / Load Root...
+                            </div>
+                            <button onclick="refreshOnchainRoot()" class="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-semibold border border-white/10 transition-all flex items-center gap-1.5">
+                                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Fetch
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Update Root Section -->
+                <div class="p-4 rounded-2xl bg-fest-pink/5 border border-fest-pink/15 space-y-3">
+                    <h4 class="text-xs font-bold text-fest-pink uppercase tracking-wider flex items-center gap-1.5">
+                        <i data-lucide="alert-triangle" class="w-4 h-4"></i> Update Root On-Chain
+                    </h4>
+                    <p class="text-xs text-slate-400">
+                        Untuk memverifikasi tiket secara on-chain di blockchain, pastikan Anda telah mengunggah Merkle Root terbaru ke smart contract.
+                        Aksi ini memanggil fungsi <code>updateMerkleRoot</code> dan hanya bisa dieksekusi oleh <strong>Owner Kontrak (Panitia)</strong>.
+                    </p>
+                    <div class="flex flex-col sm:flex-row gap-3 pt-1">
+                        <input type="text" id="admin-new-root" placeholder="0x..." class="flex-1 px-4 py-2.5 rounded-xl bg-fest-dark border border-white/10 text-white font-mono text-sm focus:outline-none focus:border-fest-pink transition-all">
+                        <button onclick="updateMerkleRootOnchain()" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-fest-pink to-fest-purple text-white font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2 hover:brightness-110 active:scale-95">
+                            <i data-lucide="upload-cloud" class="w-4 h-4"></i> Update Root
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="w-full text-center py-8 text-xs text-slate-500 border-t border-white/5 bg-black/10 mt-16 relative z-10">
+        <p>© 2026 KarsaFest Ticketing Gateway. Dibuat dengan konsep Cryptographic Merkle Tree.</p>
+    </footer>
+
+    <!-- Ethers.js v6 CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.11.1/dist/ethers.umd.min.js"></script>
+
+    <!-- App Logic -->
+    <script>
+        // --- 1. CONFIGURATION & PLACEHOLDERS ---
+        // Ganti dengan alamat kontrak KarsaTix yang dideploy di Remix/Hardhat
+        let contractAddress = "0x3d43bBE93b649a0505aa1cf5A9CD5e563c424d3e"
+        
+        const contractABI = [
+            {
+                "inputs": [],
+                "stateMutability": "nonpayable",
+                "type": "constructor"
+            },
+            {
+                "anonymous": false,
+                "inputs": [
+                    {
+                        "indexed": true,
+                        "internalType": "bytes32",
+                        "name": "oldRoot",
+                        "type": "bytes32"
+                    },
+                    {
+                        "indexed": true,
+                        "internalType": "bytes32",
+                        "name": "newRoot",
+                        "type": "bytes32"
+                    }
+                ],
+                "name": "MerkleRootUpdated",
+                "type": "event"
+            },
+            {
+                "anonymous": false,
+                "inputs": [
+                    {
+                        "indexed": true,
+                        "internalType": "address",
+                        "name": "verifier",
+                        "type": "address"
+                    },
+                    {
+                        "indexed": true,
+                        "internalType": "bytes32",
+                        "name": "leaf",
+                        "type": "bytes32"
+                    },
+                    {
+                        "indexed": false,
+                        "internalType": "bool",
+                        "name": "success",
+                        "type": "bool"
+                    }
+                ],
+                "name": "TicketVerified",
+                "type": "event"
+            },
+            {
+                "inputs": [],
+                "name": "merkleRoot",
+                "outputs": [
+                    {
+                        "internalType": "bytes32",
+                        "name": "",
+                        "type": "bytes32"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "owner",
+                "outputs": [
+                    {
+                        "internalType": "address",
+                        "name": "",
+                        "type": "address"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {
+                        "internalType": "bytes32",
+                        "name": "_newRoot",
+                        "type": "bytes32"
+                    }
+                ],
+                "name": "updateMerkleRoot",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {
+                        "internalType": "bytes32[]",
+                        "name": "proof",
+                        "type": "bytes32[]"
+                    },
+                    {
+                        "internalType": "bytes32",
+                        "name": "leaf",
+                        "type": "bytes32"
+                    }
+                ],
+                "name": "verifyTicket",
+                "outputs": [
+                    {
+                        "internalType": "bool",
+                        "name": "",
+                        "type": "bool"
+                    }
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            }
+        ];
+
+        // --- 2. GLOBAL STATE ---
+        let currentProvider;
+        let currentSigner;
+        let currentAddress = "";
+        let selectedCategory = "VIP";
+        let activeTickets = [];
+        let merkleTreeInstance = null;
+
+        // Default initial tickets so app works out of the box
+        const defaultTickets = [
+            { secret: "KARSA-VIP-8899-AX", category: "VIP", leaf: "" },
+            { secret: "KARSA-REG-4231-QM", category: "REG", leaf: "" },
+            { secret: "KARSA-GEN-1102-ZP", category: "GEN", leaf: "" }
+        ];
+
+        // --- 3. TOAST NOTIFICATION UTILS ---
+        function showToast(message, type = "info") {
+            const container = document.getElementById("toast-container");
+            const toast = document.createElement("div");
+            toast.className = `p-4 rounded-xl border flex items-center justify-between gap-3 shadow-lg transform transition-all duration-300 translate-y-2 opacity-0 glassmorphism`;
+            
+            let icon = "info";
+            let iconColor = "text-blue-400";
+            if (type === "success") {
+                icon = "check-circle";
+                iconColor = "text-emerald-400 animate-bounce";
+                toast.classList.add("neon-border-cyan");
+            } else if (type === "error") {
+                icon = "alert-octagon";
+                iconColor = "text-fest-pink";
+                toast.classList.add("neon-border-pink");
+            } else {
+                icon = "info";
+                iconColor = "text-fest-cyan";
+            }
+
+            toast.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <i data-lucide="${icon}" class="w-5 h-5 ${iconColor}"></i>
+                    <span class="text-xs font-semibold text-slate-100">${message}</span>
+                </div>
+                <button class="text-slate-400 hover:text-white transition-all text-xs" onclick="this.parentElement.remove()">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            `;
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            // Animate In
+            setTimeout(() => {
+                toast.classList.remove("translate-y-2", "opacity-0");
+            }, 10);
+
+            // Auto Dismiss
+            setTimeout(() => {
+                toast.classList.add("opacity-0", "translate-y-[-10px]");
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
+        }
+
+        // --- 4. MERKLE TREE CLASS & MATH ---
+        function hashPair(a, b) {
+            const hashA = a.toLowerCase();
+            const hashB = b.toLowerCase();
+            if (hashA <= hashB) {
+                return ethers.solidityPackedKeccak256(["bytes32", "bytes32"], [hashA, hashB]);
+            } else {
+                return ethers.solidityPackedKeccak256(["bytes32", "bytes32"], [hashB, hashA]);
+            }
+        }
+
+        class LocalMerkleTree {
+            constructor(leaves) {
+                // Ensure leaves are padded properly
+                this.leaves = leaves.map(x => ethers.zeroPadValue(ethers.getBytes(x), 32).toLowerCase());
+                this.levels = [];
+                this.buildTree();
+            }
+
+            buildTree() {
+                let currentLevel = [...this.leaves];
+                this.levels.push(currentLevel);
+                while (currentLevel.length > 1) {
+                    let nextLevel = [];
+                    for (let i = 0; i < currentLevel.length; i += 2) {
+                        let left = currentLevel[i];
+                        let right = (i + 1 < currentLevel.length) ? currentLevel[i + 1] : left;
+                        nextLevel.push(hashPair(left, right));
+                    }
+                    currentLevel = nextLevel;
+                    this.levels.push(currentLevel);
+                }
+                this.root = this.levels[this.levels.length - 1][0] || ethers.zeroPadValue("0x00", 32);
+            }
+
+            getRoot() {
+                return this.root;
+            }
+
+            getProof(leaf) {
+                const searchLeaf = ethers.zeroPadValue(ethers.getBytes(leaf), 32).toLowerCase();
+                let index = this.leaves.indexOf(searchLeaf);
+                if (index === -1) return [];
+                let proof = [];
+                let currentIdx = index;
+                for (let i = 0; i < this.levels.length - 1; i++) {
+                    let level = this.levels[i];
+                    let isRightNode = currentIdx % 2 === 1;
+                    let siblingIdx = isRightNode ? currentIdx - 1 : currentIdx + 1;
+                    if (siblingIdx < level.length) {
+                        proof.push(level[siblingIdx]);
+                    } else {
+                        // Sibling does not exist, node pairs with itself
+                        proof.push(level[currentIdx]);
+                    }
+                    currentIdx = Math.floor(currentIdx / 2);
+                }
+                return proof;
+            }
+        }
+
+        // --- 5. TICKET LOGIC ---
+        function setCategory(cat) {
+            selectedCategory = cat;
+            document.querySelectorAll(".category-btn").forEach(btn => {
+                btn.className = "category-btn py-2 px-3 rounded-xl border border-white/10 text-slate-300 text-sm font-semibold transition-all hover:border-slate-500";
+            });
+            const selectedBtn = document.getElementById(`cat-${cat}`);
+            selectedBtn.className = "category-btn py-2 px-3 rounded-xl border border-fest-pink bg-fest-pink/10 text-fest-pink text-sm font-semibold transition-all";
+        }
+
+        function calculateLeaf(secret) {
+            // Sesuai dengan solidityPackedKeccak256
+            return ethers.solidityPackedKeccak256(["string"], [secret]);
+        }
+
+        function renderTickets() {
+            const listEl = document.getElementById("ticket-list");
+            listEl.innerHTML = "";
+            activeTickets.forEach((t, idx) => {
+                t.leaf = calculateLeaf(t.secret);
+                const isSelected = detailsSectionVisibleForIdx(idx);
+                const borderClass = isSelected ? 'border-fest-pink bg-fest-pink/5' : 'border-white/5 hover:border-white/15 bg-white/[0.01]';
+                
+                listEl.innerHTML += `
+                    <div onclick="selectTicket(${idx})" class="p-3 rounded-xl border ${borderClass} cursor-pointer transition-all flex items-center justify-between group">
+                        <div class="flex items-center gap-2 truncate">
+                            <div class="px-2 py-0.5 text-[9px] font-extrabold rounded ${t.category === 'VIP' ? 'bg-fest-pink/20 text-fest-pink' : t.category === 'REG' ? 'bg-fest-cyan/20 text-fest-cyan' : 'bg-slate-700 text-slate-300'}">${t.category}</div>
+                            <span class="font-mono text-xs font-semibold text-slate-200 truncate">${t.secret}</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] text-slate-500 font-mono hidden md:inline truncate">${t.leaf.substring(0, 10)}...</span>
+                            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-500 group-hover:text-white transition-all"></i>
+                        </div>
+                    </div>
+                `;
+            });
+            document.getElementById("ticket-count").innerText = activeTickets.length;
+            lucide.createIcons();
+        }
+
+        let selectedTicketIdx = null;
+        function detailsSectionVisibleForIdx(idx) {
+            return selectedTicketIdx === idx;
+        }
+
+        function selectTicket(idx) {
+            selectedTicketIdx = idx;
+            renderTickets();
+            const ticket = activeTickets[idx];
+            
+            document.getElementById("details-section").classList.remove("hidden");
+            document.getElementById("details-badge").innerText = ticket.category;
+            
+            // Set colors of badge
+            const badge = document.getElementById("details-badge");
+            if (ticket.category === 'VIP') {
+                badge.className = "px-2 py-0.5 text-[10px] font-bold rounded bg-fest-pink/20 text-fest-pink";
+            } else if (ticket.category === 'REG') {
+                badge.className = "px-2 py-0.5 text-[10px] font-bold rounded bg-fest-cyan/20 text-fest-cyan";
+            } else {
+                badge.className = "px-2 py-0.5 text-[10px] font-bold rounded bg-slate-700 text-slate-300";
+            }
+
+            document.getElementById("details-secret").innerText = ticket.secret;
+            document.getElementById("details-leaf").innerText = ticket.leaf;
+            
+            // Build / check proof if tree exists
+            if (merkleTreeInstance) {
+                const proof = merkleTreeInstance.getProof(ticket.leaf);
+                document.getElementById("details-proof").innerText = JSON.stringify(proof);
+            } else {
+                document.getElementById("details-proof").innerText = "Tree belum di-build. Klik tombol build di bawah.";
+            }
+        }
+
+        function generateNewTicket() {
+            const ownerNameInput = document.getElementById("input-ticket-owner");
+            const cleanName = ownerNameInput.value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase() || "ANON";
+            const randSuffix = Math.floor(1000 + Math.random() * 9000);
+            
+            // Secret ticket format
+            const secret = `KRS-${selectedCategory}-${cleanName}-${randSuffix}`;
+            
+            // Add to list
+            activeTickets.push({
+                secret: secret,
+                category: selectedCategory,
+                leaf: ""
+            });
+
+            // Save to localStorage
+            localStorage.setItem("karsatix_active_tickets", JSON.stringify(activeTickets));
+
+            ownerNameInput.value = "";
+            renderTickets();
+            selectTicket(activeTickets.length - 1);
+            showToast("Kode rahasia tiket berhasil di-generate!", "success");
+        }
+
+        function resetTickets() {
+            activeTickets = [...defaultTickets];
+            selectedTicketIdx = null;
+            merkleTreeInstance = null;
+            
+            // Save to localStorage
+            localStorage.setItem("karsatix_active_tickets", JSON.stringify(activeTickets));
+
+            document.getElementById("details-section").classList.add("hidden");
+            document.getElementById("root-display").classList.add("hidden");
+            renderTickets();
+            showToast("Daftar tiket di-reset ke default template.", "info");
+        }
+
+        function buildMerkleTree() {
+            if (activeTickets.length === 0) {
+                showToast("Daftar tiket kosong. Silakan generate tiket terlebih dahulu.", "error");
+                return;
+            }
+
+            // Extract leaves
+            const leaves = activeTickets.map(t => calculateLeaf(t.secret));
+            
+            // Build tree
+            try {
+                merkleTreeInstance = new LocalMerkleTree(leaves);
+                const root = merkleTreeInstance.getRoot();
+                
+                document.getElementById("root-display").classList.remove("hidden");
+                document.getElementById("merkle-root-value").innerText = root;
+                
+                // Update active details proof if visible
+                if (selectedTicketIdx !== null) {
+                    selectTicket(selectedTicketIdx);
+                }
+                
+                showToast("Merkle Tree berhasil di-build!", "success");
+            } catch (err) {
+                console.error(err);
+                showToast("Gagal memproses Merkle Tree: " + err.message, "error");
+            }
+        }
+
+        function sendToGateInput() {
+            if (selectedTicketIdx === null) return;
+            const ticket = activeTickets[selectedTicketIdx];
+            if (!merkleTreeInstance) {
+                showToast("Harap klik 'Hitung Merkle Root & Tree' terlebih dahulu.", "error");
+                return;
+            }
+            const leaf = ticket.leaf;
+            const proof = merkleTreeInstance.getProof(leaf);
+
+            document.getElementById("gate-leaf").value = leaf;
+            document.getElementById("gate-proof").value = JSON.stringify(proof);
+            showToast("Leaf & Proof disalin ke input check-in gate.", "success");
+        }
+
+        function copyText(elementId) {
+            const text = document.getElementById(elementId).innerText || document.getElementById(elementId).value;
+            navigator.clipboard.writeText(text);
+            showToast("Disalin ke clipboard!", "success");
+        }
+
+        // --- 6. METAMASK / ETHERS INTEGRATION ---
+        async function connectWallet() {
+            if (!window.ethereum) {
+                showToast("MetaMask tidak terdeteksi. Silakan pasang ekstensi browser MetaMask.", "error");
+                return;
+            }
+            try {
+                currentProvider = new ethers.BrowserProvider(window.ethereum);
+                const accounts = await currentProvider.send("eth_requestAccounts", []);
+                currentSigner = await currentProvider.getSigner();
+                currentAddress = accounts[0];
+                
+                // Update Button
+                const truncatedAddress = currentAddress.substring(0, 6) + "..." + currentAddress.substring(currentAddress.length - 4);
+                document.getElementById("btn-connect-text").innerText = truncatedAddress;
+                document.getElementById("btn-connect").className = "flex items-center gap-2 px-5 py-2.5 rounded-full bg-emerald-950/50 border border-emerald-500/50 text-emerald-400 font-medium text-sm shadow-lg hover:shadow-neon-cyan active:scale-95 group";
+                
+                showToast(`Dompet terhubung ke: ${truncatedAddress}`, "success");
+                
+                // Fetch on-chain status if contract addresses exist
+                if (contractAddress) {
+                    refreshOnchainRoot();
+                }
+            } catch (err) {
+                console.error(err);
+                showToast("Koneksi dompet dibatalkan atau gagal.", "error");
+            }
+        }
+
+        // Listen for wallet changes
+        if (window.ethereum) {
+            window.ethereum.on('accountsChanged', function (accounts) {
+                if (accounts.length > 0) {
+                    currentAddress = accounts[0];
+                    const truncatedAddress = currentAddress.substring(0, 6) + "..." + currentAddress.substring(currentAddress.length - 4);
+                    document.getElementById("btn-connect-text").innerText = truncatedAddress;
+                    showToast(`Akun berubah ke: ${truncatedAddress}`, "info");
+                } else {
+                    currentAddress = "";
+                    document.getElementById("btn-connect-text").innerText = "Connect Wallet";
+                    document.getElementById("btn-connect").className = "flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-fest-purple to-indigo-900 border border-purple-500/30 hover:border-fest-pink/80 transition-all duration-300 font-medium text-sm shadow-lg hover:shadow-neon-purple active:scale-95 group";
+                    showToast("Dompet diputus.", "info");
+                }
+            });
+        }
+
+        // --- 7. VERIFICATION ACTIONS ---
+        function updateGateIndicator(state, message) {
+            const ind = document.getElementById("gate-indicator");
+            const iconCont = document.getElementById("gate-icon-container");
+            const title = document.getElementById("gate-status-title");
+            const desc = document.getElementById("gate-status-desc");
+
+            if (state === "idle") {
+                ind.className = "p-6 rounded-2xl border bg-slate-900/40 border-slate-800 text-center transition-all duration-500 flex flex-col items-center justify-center gap-3";
+                iconCont.className = "w-14 h-14 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 border border-slate-700 animate-pulse";
+                iconCont.innerHTML = `<i data-lucide="shield-question" class="w-8 h-8"></i>`;
+                title.className = "font-display font-bold text-lg text-slate-300";
+                title.innerText = "Menunggu Input Tiket";
+                desc.innerText = message || "Masukkan leaf hash dan proof yang valid untuk memverifikasi.";
+            } else if (state === "loading") {
+                ind.className = "p-6 rounded-2xl border bg-indigo-950/20 border-indigo-900/40 text-center transition-all duration-500 flex flex-col items-center justify-center gap-3 shadow-neon-purple";
+                iconCont.className = "w-14 h-14 rounded-full bg-indigo-950 flex items-center justify-center text-indigo-400 border border-indigo-500/50 animate-spin";
+                iconCont.innerHTML = `<i data-lucide="loader" class="w-8 h-8"></i>`;
+                title.className = "font-display font-bold text-lg text-indigo-300";
+                title.innerText = "Melakukan Verifikasi...";
+                desc.innerText = "Memvalidasi bukti kepemilikan Merkle Proof ke blockchain.";
+            } else if (state === "success") {
+                ind.className = "p-6 rounded-2xl border bg-emerald-950/20 border-emerald-500/50 text-center transition-all duration-500 flex flex-col items-center justify-center gap-3 shadow-neon-cyan";
+                iconCont.className = "w-14 h-14 rounded-full bg-emerald-950 flex items-center justify-center text-emerald-400 border border-emerald-500/50 scale-110 transition-all duration-300";
+                iconCont.innerHTML = `<i data-lucide="check-circle" class="w-8 h-8 animate-bounce"></i>`;
+                title.className = "font-display font-bold text-xl text-emerald-400 glow-text-cyan";
+                title.innerText = "ACCESS GRANTED (VALID)";
+                desc.innerHTML = `<span class="text-xs text-slate-300 font-semibold block">${message}</span><span class="text-[10px] text-slate-400 block mt-1">Sertifikat tiket valid & terdaftar dalam Merkle Root.</span>`;
+            } else if (state === "failed") {
+                ind.className = "p-6 rounded-2xl border bg-rose-950/20 border-rose-500/50 text-center transition-all duration-500 flex flex-col items-center justify-center gap-3 shadow-neon-pink";
+                iconCont.className = "w-14 h-14 rounded-full bg-rose-950 flex items-center justify-center text-rose-400 border border-rose-500/50 scale-105 transition-all duration-300";
+                iconCont.innerHTML = `<i data-lucide="x-circle" class="w-8 h-8"></i>`;
+                title.className = "font-display font-bold text-xl text-rose-400 glow-text-pink";
+                title.innerText = "ACCESS DENIED (INVALID)";
+                desc.innerHTML = `<span class="text-xs text-slate-300 font-semibold block">${message}</span><span class="text-[10px] text-slate-500 block mt-1">Bukti Merkle Proof tidak cocok dengan data terdaftar.</span>`;
+            }
+            lucide.createIcons();
+        }
+
+        // 7a. Local Verification (Off-Chain simulation)
+        function verifyLocally() {
+            const leafInput = document.getElementById("gate-leaf").value.trim();
+            const proofInput = document.getElementById("gate-proof").value.trim();
+
+            if (!leafInput || !proofInput) {
+                showToast("Harap masukkan Leaf Hash dan Merkle Proof.", "error");
+                return;
+            }
+
+            if (!merkleTreeInstance) {
+                showToast("Belum ada Merkle Tree di-generate lokal. Klik 'Hitung Merkle Root' terlebih dahulu.", "error");
+                return;
+            }
+
+            updateGateIndicator("loading");
+
+            setTimeout(() => {
+                try {
+                    const parsedProof = JSON.parse(proofInput);
+                    const root = merkleTreeInstance.getRoot();
+                    
+                    // Simple Verification logic in JS to emulate smart contract
+                    let computedHash = ethers.zeroPadValue(ethers.getBytes(leafInput), 32).toLowerCase();
+                    for (let i = 0; i < parsedProof.length; i++) {
+                        let proofElement = ethers.zeroPadValue(ethers.getBytes(parsedProof[i]), 32).toLowerCase();
+                        computedHash = hashPair(computedHash, proofElement);
+                    }
+
+                    const isValid = (computedHash === root.toLowerCase());
+
+                    if (isValid) {
+                        updateGateIndicator("success", "Validasi Simulator Lokal Berhasil");
+                        showToast("Tiket VALID di simulator lokal!", "success");
+                    } else {
+                        updateGateIndicator("failed", "Validasi Simulator Lokal Gagal");
+                        showToast("Tiket TIDAK VALID di simulator lokal!", "error");
+                    }
+                } catch (err) {
+                    console.error(err);
+                    updateGateIndicator("idle");
+                    showToast("Error saat parsing proof lokal: " + err.message, "error");
+                }
+            }, 800);
+        }
+
+        // 7b. Smart Contract Verification (On-Chain)
+        async function verifyOnChain() {
+            const leafInput = document.getElementById("gate-leaf").value.trim();
+            const proofInput = document.getElementById("gate-proof").value.trim();
+
+            if (!leafInput || !proofInput) {
+                showToast("Harap masukkan Leaf Hash dan Merkle Proof.", "error");
+                return;
+            }
+
+            if (!contractAddress) {
+                showToast("Smart Contract Address belum diatur di Panitia Console.", "error");
+                toggleAdminPanel(true); // Open admin console
+                return;
+            }
+
+            let runner = currentSigner || currentProvider;
+            if (!runner) {
+                if (window.ethereum) {
+                    currentProvider = new ethers.BrowserProvider(window.ethereum);
+                    runner = currentProvider;
+                } else {
+                    showToast("Harap hubungkan dompet MetaMask Anda.", "error");
+                    return;
+                }
+            }
+
+            updateGateIndicator("loading");
+
+            try {
+                const parsedProof = JSON.parse(proofInput);
+                const contract = new ethers.Contract(contractAddress, contractABI, runner);
+                
+                showToast("Mengecek validasi tiket pada smart contract...", "info");
+                
+                const isValid = await contract.verifyTicket(parsedProof, leafInput);
+
+                if (isValid) {
+                    updateGateIndicator("success", `On-Chain Validated (Gasless Read)`);
+                    showToast("Tiket VALID di blockchain!", "success");
+                } else {
+                    updateGateIndicator("failed", `On-Chain Rejected (Gasless Read)`);
+                    showToast("Tiket TIDAK VALID di blockchain!", "error");
+                }
+            } catch (err) {
+                console.error(err);
+                updateGateIndicator("failed", "Kesalahan Pemanggilan Smart Contract");
+                showToast("Gagal memanggil Smart Contract: " + (err.reason || err.message), "error");
+            }
+        }
+
+        // --- 8. ADMIN ACTIONS ---
+        function toggleAdminPanel(forceOpen = false) {
+            const panel = document.getElementById("admin-panel");
+            const chevron = document.getElementById("admin-chevron");
+            const isOpen = !panel.classList.contains("hidden");
+
+            if (isOpen && !forceOpen) {
+                panel.classList.add("hidden");
+                chevron.style.transform = "rotate(0deg)";
+            } else {
+                panel.classList.remove("hidden");
+                chevron.style.transform = "rotate(180deg)";
+            }
+        }
+
+        function saveContractAddress() {
+            const addr = document.getElementById("input-contract-address").value.trim();
+            if (!ethers.isAddress(addr)) {
+                showToast("Alamat Smart Contract tidak valid!", "error");
+                return;
+            }
+            contractAddress = addr;
+            localStorage.setItem("karsatix_contract_address", addr);
+            showToast("Alamat kontrak berhasil disimpan!", "success");
+            refreshOnchainRoot();
+        }
+
+        async function refreshOnchainRoot() {
+            if (!contractAddress) {
+                document.getElementById("onchain-root-display").innerText = "Isi alamat kontrak dahulu.";
+                return;
+            }
+            
+            // Create a read provider (MetaMask or default)
+            let provider = currentProvider;
+            if (!provider) {
+                if (window.ethereum) {
+                    provider = new ethers.BrowserProvider(window.ethereum);
+                } else {
+                    document.getElementById("onchain-root-display").innerText = "Hubungkan dompet untuk fetch root.";
+                    return;
+                }
+            }
+
+            try {
+                const contract = new ethers.Contract(contractAddress, contractABI, provider);
+                const root = await contract.merkleRoot();
+                document.getElementById("onchain-root-display").innerText = root;
+                document.getElementById("admin-new-root").value = root;
+                showToast("Berhasil mengambil Merkle Root dari blockchain.", "success");
+            } catch (err) {
+                console.error(err);
+                document.getElementById("onchain-root-display").innerText = "Gagal mengambil root.";
+                showToast("Gagal mengambil root dari blockchain: " + (err.reason || err.message), "error");
+            }
+        }
+
+        async function updateMerkleRootOnchain() {
+            const newRoot = document.getElementById("admin-new-root").value.trim();
+            if (!newRoot || newRoot.length !== 66 || !newRoot.startsWith("0x")) {
+                showToast("Format Merkle Root (bytes32) tidak valid!", "error");
+                return;
+            }
+
+            if (!contractAddress) {
+                showToast("Silakan atur alamat kontrak terlebih dahulu.", "error");
+                return;
+            }
+
+            if (!currentSigner) {
+                showToast("Dompet Anda belum terhubung.", "error");
+                await connectWallet();
+                if (!currentSigner) return;
+            }
+
+            try {
+                const contract = new ethers.Contract(contractAddress, contractABI, currentSigner);
+                showToast("Mengirim transaksi updateMerkleRoot...", "info");
+                
+                const tx = await contract.updateMerkleRoot(newRoot);
+                showToast(`Transaksi dikirim: ${tx.hash.substring(0, 10)}...`, "info");
+                
+                await tx.wait();
+                showToast("Merkle Root berhasil di-update di blockchain!", "success");
+                refreshOnchainRoot();
+            } catch (err) {
+                console.error(err);
+                showToast("Gagal memperbarui root: " + (err.reason || err.message), "error");
+            }
+        }
+
+        // --- Guide Modal Toggle ---
+        function toggleGuideModal(show) {
+            const modal = document.getElementById("guide-modal");
+            const content = document.getElementById("guide-modal-content");
+            if (show) {
+                modal.classList.remove("hidden");
+                modal.classList.add("flex");
+                setTimeout(() => {
+                    content.classList.remove("scale-95", "opacity-0");
+                    content.classList.add("scale-100", "opacity-100");
+                }, 50);
+            } else {
+                content.classList.remove("scale-100", "opacity-100");
+                content.classList.add("scale-95", "opacity-0");
+                setTimeout(() => {
+                    modal.classList.remove("flex");
+                    modal.classList.add("hidden");
+                }, 300);
+            }
+        }
+
+        // --- 9. INITIALIZATION ---
+        window.addEventListener("DOMContentLoaded", () => {
+            // Load address from localstorage
+            if (contractAddress) {
+                document.getElementById("input-contract-address").value = contractAddress;
+            }
+            
+            // Populate initial tickets
+            const storedTickets = localStorage.getItem("karsatix_active_tickets");
+            if (storedTickets) {
+                try {
+                    activeTickets = JSON.parse(storedTickets);
+                } catch (e) {
+                    activeTickets = [...defaultTickets];
+                }
+            } else {
+                activeTickets = [...defaultTickets];
+            }
+            renderTickets();
+            
+            // Build tree on load
+            buildMerkleTree();
+
+            // Select first ticket
+            selectTicket(0);
+
+            // Initialize Lucide Icons
+            lucide.createIcons();
+        });
+    </script>
+</body>
+</html>
